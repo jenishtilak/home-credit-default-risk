@@ -25,37 +25,31 @@ projects = [
         "title": "1. Home Credit default risk",
         "blurb": "Application scorecard: predict whether a loan applicant will default. Tuned LightGBM, validation AUC 0.7804, SHAP reasons, approve / review / reject bands.",
         "page": "pages/home_credit.py",
-        "status": "Live demo",
     },
     {
         "title": "2. Credit card fraud",
-        "blurb": "Detect rare fraudulent transactions with XGBoost, compared with Isolation Forest. Class imbalance, precision / recall and SHAP.",
-        "page": None,
-        "status": "Demo being added next",
+        "blurb": "Detect rare fraudulent transactions with XGBoost, compared with Isolation Forest. Class imbalance, PR-AUC 0.7507, and SHAP on PCA features.",
+        "page": "pages/fraud.py",
     },
     {
         "title": "3. CFPB complaints RAG",
-        "blurb": "Retrieve similar consumer complaints and draft a short answer. This demo uses TF-IDF retrieval only; production would add an LLM such as Bedrock.",
-        "page": None,
-        "status": "Demo being added next",
+        "blurb": "Retrieve similar consumer complaints and fill a short template. This demo uses TF-IDF only; the notebook used MiniLM + FAISS + Flan-T5. Production would add an LLM such as Bedrock.",
+        "page": "pages/rag.py",
     },
     {
         "title": "4. Bank term-deposit propensity",
-        "blurb": "Who is likely to subscribe to a term deposit after a campaign call. Model comparison (logistic regression, trees, XGBoost) and a business cut-off.",
-        "page": None,
-        "status": "Demo being added next",
+        "blurb": "Who is likely to subscribe after a campaign call. XGBoost vs logistic, trees and Random Forest. Duration was dropped as leakage. Top 20% capture 66.3% of subscribers.",
+        "page": "pages/bank.py",
     },
     {
         "title": "5. Credit-card customer segmentation",
-        "blurb": "K-Means segments on CC General spending behaviour, with silhouette to choose k and PCA only to plot the clusters.",
-        "page": None,
-        "status": "Demo being added next",
+        "blurb": "K-Means on CC General spending behaviour. Silhouette helped choose k = 4; PCA is only used to plot the clusters, not to assign them.",
+        "page": "pages/segmentation.py",
     },
     {
-        "title": "6. Lending Club interest-rate regression",
-        "blurb": "Predict the interest rate on a personal loan. XGBoost regressor, RMSE / MAE / R², and the drivers of a higher rate.",
-        "page": None,
-        "status": "Demo being added next",
+        "title": "6. Lending Club interest rate",
+        "blurb": "Predict the interest rate on a personal loan. XGBoost regressor, test RMSE 3.27. Grade and instalment were dropped as leakage; term is the strongest driver.",
+        "page": "pages/lending_club.py",
     },
 ]
 
@@ -65,10 +59,7 @@ for i in range(0, len(projects), 2):
         with col:
             st.markdown(f"### {project['title']}")
             st.write(project["blurb"])
-            if project["page"]:
-                st.page_link(project["page"], label="Open this project", icon="➡️")
-            else:
-                st.caption(project["status"])
+            st.page_link(project["page"], label="Open this project", icon="➡️")
 
 st.divider()
 st.caption(

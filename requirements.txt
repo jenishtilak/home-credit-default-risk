@@ -9,3 +9,6 @@ matplotlib==3.10.7
 fastapi==0.163.1
 uvicorn==0.54.0
 pydantic==2.14.3
+
+# CPU wheel, so Streamlit Cloud does not also install the 200 MB NVIDIA NCCL package.
+xgboost @ https://files.pythonhosted.org/packages/48/bc/05d7db90d421c5e3d681a12fd1eb087e37bf2e9bbe2b105422d6319ecc92/xgboost-2.1.3-py3-none-manylinux2014_x86_64.whl

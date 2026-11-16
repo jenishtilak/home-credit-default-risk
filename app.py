@@ -13,11 +13,24 @@ home_credit = st.Page(
     title="Home Credit default risk",
     icon="💳",
 )
+fraud = st.Page("pages/fraud.py", title="Credit card fraud", icon="🚨")
+rag = st.Page("pages/rag.py", title="CFPB complaints RAG", icon="📄")
+bank = st.Page("pages/bank.py", title="Bank term-deposit propensity", icon="🏦")
+segmentation = st.Page(
+    "pages/segmentation.py",
+    title="Credit-card customer segmentation",
+    icon="🧩",
+)
+lending = st.Page(
+    "pages/lending_club.py",
+    title="Lending Club interest rate",
+    icon="📈",
+)
 
 pg = st.navigation(
     {
         "Hub": [home, deploy],
-        "Projects": [home_credit],
+        "Projects": [home_credit, fraud, rag, bank, segmentation, lending],
     }
 )
 pg.run()
