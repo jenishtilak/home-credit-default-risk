@@ -9,7 +9,7 @@ This repo serves the same model in two ways:
 
 Live URLs (fill in after deploy):
 
-- API (Render): `RENDER_URL`
+- API (Render): `https://home-credit-default-risk-api-q0qa.onrender.com`
 - Streamlit app: `STREAMLIT_URL`
 
 ## Project summary
@@ -97,7 +97,7 @@ Example response shape:
 
 ## Deploy
 
-**Render (FastAPI).** This folder includes a `render.yaml` blueprint: a free Python web service, Python 3.11, `pip install -r requirements.txt`, and `uvicorn api:app --host 0.0.0.0 --port $PORT`. Create a GitHub repo from this folder, then in Render choose **New > Blueprint** and point it at the repo. After it goes live, replace `RENDER_URL` above with the service URL.
+**Render (FastAPI).** This folder includes a `render.yaml` blueprint: a free Python web service, Python 3.11, `pip install -r requirements.txt`, and `uvicorn api:app --host 0.0.0.0 --port $PORT`. Create a GitHub repo from this folder, then in Render choose **New > Blueprint** and point it at the repo. After it goes live, replace `https://home-credit-default-risk-api-q0qa.onrender.com` above with the service URL.
 
 **Streamlit Community Cloud.** In share.streamlit.io, deploy the same repo, set the main file to `app.py`, and use Python 3.11. After it goes live, replace `STREAMLIT_URL` above with the app URL.
 
