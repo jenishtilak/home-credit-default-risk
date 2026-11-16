@@ -26,6 +26,15 @@ Live URLs (fill in after deploy):
 
 The officer edits 10 fields (three external scores, age, income, credit, annuity, years employed, gender, education). Every other feature is filled with the training-set median, and the same derived features as the notebook are computed (average external score, loan term, income ratios). The saved model file is `home_credit_lgbm.joblib` (1.8 MB).
 
+The Streamlit app has two tabs: **Score an applicant** (live demo with SHAP) and **How the model was built** (the 12 training steps, with the key numbers).
+
+## Training notebook
+
+The executed 12-step training notebook (with outputs) is in this repo:
+
+- GitHub: https://github.com/jenishtilak/home-credit-default-risk/blob/main/notebooks/home_credit_default_risk.ipynb
+- Kaggle: https://www.kaggle.com/code/jenishtilakt/loan-default-credit-risk-scorecard-lightgbm
+
 ## Run locally
 
 Python 3.11 is recommended.

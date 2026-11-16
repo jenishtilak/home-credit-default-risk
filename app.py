@@ -24,6 +24,15 @@ from scoring import (
 
 APP_DIR = Path(__file__).parent
 
+NOTEBOOK_GITHUB = (
+    "https://github.com/jenishtilak/home-credit-default-risk/blob/main/"
+    "notebooks/home_credit_default_risk.ipynb"
+)
+NOTEBOOK_KAGGLE = (
+    "https://www.kaggle.com/code/jenishtilakt/"
+    "loan-default-credit-risk-scorecard-lightgbm"
+)
+
 # Typical applicant = training medians. Age 43.1 years, employed 4.5 years.
 TYPICAL = {
     "ext1": 0.51,
@@ -103,19 +112,7 @@ def load_high_risk():
     st.session_state.update(HIGH_RISK)
 
 
-def render():
-    st.set_page_config(page_title="Loan Default Risk Checker", layout="wide")
-    bundle = load_bundle()
-    model = bundle["model"]
-    features = bundle["features"]
-    medians = bundle["medians"]
-    explainer = load_explainer(model)
-
-    for key, value in TYPICAL.items():
-        if key not in st.session_state:
-            st.session_state[key] = value
-
-    st.title("Loan Default Risk Checker")
+def render_score_tab(model, features, medians, explainer):
     st.write(
         "Enter a few applicant details and click **Predict**. "
         "Every other feature is filled with the training-set median, "
@@ -182,11 +179,11 @@ def render():
 
         if prob >= FLAG_CUTOFF:
             st.warning(
-                f"This score is at or above the 0.5912 cut-off, so it is in the riskiest 20% of applicants."
+                "This score is at or above the 0.5912 cut-off, so it is in the riskiest 20% of applicants."
             )
         else:
             st.info(
-                f"This score is below the 0.5912 cut-off that flags the riskiest 20% of applicants."
+                "This score is below the 0.5912 cut-off that flags the riskiest 20% of applicants."
             )
 
         st.caption(
@@ -217,6 +214,214 @@ def render():
 - SHAP explains *this* applicant: why the model moved the score up or down.
             """
         )
+
+
+def render_build_tab():
+    st.write(
+        "This app scores new applicants with a tuned LightGBM model trained on the "
+        "Kaggle Home Credit Default Risk data. The 12 steps below follow the training "
+        "notebook, from the business problem to monitoring. Open each step as you explain it."
+    )
+    st.markdown(
+        f"- Training notebook on [GitHub]({NOTEBOOK_GITHUB}) (with outputs)  \n"
+        f"- Same notebook on [Kaggle]({NOTEBOOK_KAGGLE})"
+    )
+
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Validation AUC", "0.7804")
+    m2.metric("Gini", "0.5608")
+    m3.metric("KS", "0.4252")
+    m4.metric("Default rate", "8.07%")
+
+    st.subheader("Model comparison")
+    st.dataframe(
+        pd.DataFrame(
+            {
+                "Model": [
+                    "Logistic regression (baseline)",
+                    "LightGBM (default)",
+                    "Tuned LightGBM (final)",
+                ],
+                "AUC": ["0.7600", "0.7784", "0.7804"],
+                "Gini": ["0.5200", "0.5569", "0.5608"],
+                "KS": ["0.3914", "0.4226", "0.4252"],
+            }
+        ),
+        hide_index=True,
+        use_container_width=True,
+    )
+    st.caption("All metrics are on the same 20% validation set (61,503 applicants).")
+
+    st.subheader("The 12 training steps")
+
+    with st.expander("Step 1 — Problem statement and the target"):
+        st.markdown(
+            """
+- Framed this as supervised binary classification: predict the probability that an
+  applicant defaults, so the credit team can approve, review or reject at sanction.
+- `TARGET = 1` means the client had payment difficulties; `0` means they repaid.
+- Loaded **307,511** applications: **282,686** repaid and **24,825** defaulted
+  (**8.07%**). That is about **11.4** repaid for every default, so we judge the
+  model on AUC, Gini and KS, not accuracy.
+            """
+        )
+
+    with st.expander("Step 2 — Data collection and the join"):
+        st.markdown(
+            """
+- Mapped seven data tables. History tables are one-to-many (on average 5.6 bureau
+  records and 4.9 previous applications per applicant).
+- Summarised bureau, previous applications and instalments with `groupby` /
+  aggregation, then LEFT JOINed on `SK_ID_CURR`. Rows stayed 307,511; columns
+  went from **122 to 134**.
+- 14.31% of applicants have no bureau history and default at **10.12%**, versus
+  **7.73%** for those with history. That "thin file" signal is worth keeping.
+            """
+        )
+
+    with st.expander("Step 3 — Exploratory data analysis"):
+        st.markdown(
+            """
+- **3.2 Welch t-test** on EXT_SOURCE 1, 2 and 3, AMT_CREDIT and age. Defaulters
+  have lower external scores (EXT_SOURCE_3 **0.391 vs 0.521**) and are younger
+  (**40.8 vs 44.2** years). All five p-values were below 0.05.
+- **3.3 Chi-square** on contract type, gender, education and income type. Cash
+  loans default at 8.35% vs 5.48% for revolving; lower secondary is riskiest at
+  10.93%, higher education safer at 5.36%.
+- **3.5 Correlation:** strongest signals are the external scores (EXT_SOURCE_3
+  **−0.1789**). Joined features such as late-payment rate also made the top 10.
+- The tests confirmed which features carry signal and guided feature engineering.
+  We did **not** drop columns based on p-values: with 300k rows almost everything
+  is significant, so we relied on IV, model importance and validation AUC instead.
+            """
+        )
+
+    with st.expander("Step 4 — Data cleaning"):
+        st.markdown(
+            """
+- `DAYS_EMPLOYED = 365243` (about 1,000 years) is a placeholder, mostly pensioners.
+  We turned it into missing and added a flag, `DAYS_EMPLOYED_ANOM`.
+- Zero-filled missing history counts, added a `NO_BUREAU_HISTORY` flag, dropped
+  **17** columns that were more than 60% missing, and filled the rest with the
+  median (or `"Missing"` for categories).
+- Final shape: **(307,511, 119)** with no missing values, ready for logistic regression.
+            """
+        )
+
+    with st.expander("Step 5 — Feature engineering and WoE / IV"):
+        st.markdown(
+            """
+- Built **7** business features: age and years employed, credit-to-income,
+  annuity-to-income (like FOIR), loan term, average external score, and
+  bureau debt-to-credit.
+- Ranked 8 numeric features with Weight of Evidence and Information Value.
+  Top IV: **EXT_SOURCE_MEAN 0.618**, CREDIT_TERM 0.144, YEARS_EMPLOYED 0.107.
+- Nothing was dropped. IV above 0.5 is usually a leakage warning, but this is
+  an external credit score known at application time, so it is strong rather
+  than leaking.
+            """
+        )
+
+    with st.expander("Step 6 — Encoding and the train / validation split"):
+        st.markdown(
+            """
+- One-hot encoded the categorical columns with `get_dummies`, producing **250**
+  features.
+- Split **80/20**, stratified on TARGET: 246,008 train and 61,503 validation.
+  The default rate stayed **8.07%** in both sets, so the evaluation is honest.
+            """
+        )
+
+    with st.expander("Step 7 — Baseline logistic regression"):
+        st.markdown(
+            """
+- Scaled logistic regression, the explainable industry-standard scorecard:
+  AUC **0.7600**, Gini **0.5200**, KS **0.3914**.
+- VIF check: AMT_CREDIT **41.35** and AMT_GOODS_PRICE **38.98**, because the
+  loan amount almost equals the goods price. Both were kept for this version;
+  in production we would keep one or replace them with a ratio.
+            """
+        )
+
+    with st.expander("Step 8 — LightGBM"):
+        st.markdown(
+            """
+- Trained LightGBM with `scale_pos_weight` **11.39** (so each default counts
+  about 11 times as much) and early stopping. The run chose **328** trees.
+- Validation: AUC **0.7784**, Gini **0.5569**, KS **0.4226**. Gini improved by
+  **+0.0369** over the logistic baseline.
+            """
+        )
+
+    with st.expander("Step 9 — Hyperparameter tuning"):
+        st.markdown(
+            """
+- Ran a small `RandomizedSearchCV` on a 20% sample of the training data
+  (10 random combinations × 3-fold CV), then retrained on the full training set.
+- Tuned LightGBM: AUC **0.7804**, Gini **0.5608**, KS **0.4252**, with 1,003
+  trees. This became the final model (`tuned_lgbm`).
+- The tuning gain is small (0.7784 to 0.7804). Simpler trees (15 leaves, depth 5)
+  did slightly better; more feature work would likely add more than more tuning.
+            """
+        )
+
+    with st.expander("Step 10 — Evaluation, cut-off, bands and SHAP"):
+        st.markdown(
+            """
+- Cut-off **0.5912** flags the riskiest 20% of applicants: precision **22.47%**,
+  recall **55.67%**. Confusion matrix: TP **2,764**, FN **2,201**, FP **9,537**,
+  TN **47,001**.
+- Decision bands (an illustrative 60% / 25% / 15% split of the validation scores):
+  Approve if under **0.4132** (3.01% defaulted), Review if under **0.6460**
+  (9.85%), Reject at or above **0.6460** (25.34%).
+- SHAP explains each score. The top feature by gain is EXT_SOURCE_MEAN (**31.98%**).
+            """
+        )
+
+    with st.expander("Step 11 — Error analysis"):
+        st.markdown(
+            """
+- Done on the **validation set** at the 0.5912 cut-off, not on a separate test set.
+- Missed defaulters (the 2,201 false negatives) looked safer on paper: higher
+  EXT_SOURCE_MEAN (**0.505 vs 0.371**), older, longer employed, fewer past refusals.
+  Their default is driven by things the application data does not show.
+- Weakest large segment: pensioners, AUC **0.7481** (11,228 applicants). That
+  group might need its own features, model or policy rule.
+            """
+        )
+
+    with st.expander("Step 12 — MLflow, saving the model and PSI monitoring"):
+        st.markdown(
+            """
+- Tracked experiments with MLflow using a **local SQLite** file (`mlflow.db`)
+  inside the notebook session. That file is not in this GitHub repo; in production
+  we would point the same code at a shared MLflow server.
+- The logged run is `tuned_lgbm`. The app loads `home_credit_lgbm.joblib`
+  (the model, feature list, medians and cut-off).
+- Score PSI between train and validation is **0.0003** (stable; below 0.1 is fine).
+            """
+        )
+
+
+def render():
+    st.set_page_config(page_title="Loan Default Risk Checker", layout="wide")
+    bundle = load_bundle()
+    model = bundle["model"]
+    features = bundle["features"]
+    medians = bundle["medians"]
+    explainer = load_explainer(model)
+
+    for key, value in TYPICAL.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
+    st.title("Loan Default Risk Checker")
+
+    score_tab, build_tab = st.tabs(["Score an applicant", "How the model was built"])
+    with score_tab:
+        render_score_tab(model, features, medians, explainer)
+    with build_tab:
+        render_build_tab()
 
 
 if __name__ == "__main__":
